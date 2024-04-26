@@ -18,12 +18,10 @@ func check(e error) {
 	}
 }
 
-//purge the input
+// purge the input
 func removeSpaces(oldString string) string {
-
 	regRule := regexp.MustCompile(`\s+`)
 	return regRule.ReplaceAllString(oldString, " ")
-
 }
 
 func Reloaded() {
@@ -54,44 +52,64 @@ func Reloaded() {
 		newString := removeSpaces(rows[j])
 
 		///splitting each row by " "
+
 		slices := strings.Split(newString, " ")
-		handleFlags(rows[j])
 
 		result := ""
 
 		checkVowels(slices)
 
-		slices = generalCapUpLow(slices)
-		fmt.Println("slices : ", slices)
+		slices = generalFlags(slices)
 		///punctuations
 		slicesStr := SliceToString(slices)
 		punkSlice := strings.Split(slicesStr, " ")
+
 		punks := ".,!?:;"
-
-		for i := 0; i < len(punkSlice); i++ {
+		// newStr :=""
+		for i := 0; i < len(slicesStr); i++ {
 			for j := 0; j < len(punks); j++ {
-				if strings.Index(punkSlice[i], string(punks[j])) == 0 {
-
-					if i == len(punkSlice)-1 {
-
-						punkSlice[i-1] += punkSlice[i]
-						punkSlice = punkSlice[:i]
-
-					} else {
-
-						punkSlice[i-1] = punkSlice[i-1] + string(punks[j])
-						punkSlice[i] = punkSlice[i][1:]
+				if slicesStr[i] == punks[j] {
+					if i > 0 && string(slicesStr[i-1]) == " " {
+						//	slicesStr[i-1] = slicesStr[i] + " "
+						// ss := slicesStr[i-1]
+						// strings.Replace(slicesStr, ss, slicesStr, 1)
+						// newStr =
 					}
-					i--
 				}
 			}
 		}
+
+		/*	for i := 0; i < len(punkSlice); i++ {
+			for j := 0; j < len(punks); j++ {
+				fmt.Println(punkSlice[i])
+				if strings.Index(punkSlice[i], string(punks[j])) == 0 {
+					if i-1 >= 0 {
+
+						if len(punkSlice[i]) == 1 {
+							// if there is a char only
+							punkSlice[i-1] += string(punks[j])
+							punkSlice = append(punkSlice[:i], punkSlice[i+1:]...)
+
+						} else if i == len(punkSlice)-1 && len(punkSlice[i]) == 1 {
+							fmt.Println("again")
+							punkSlice[i-1] += punkSlice[i]
+							punkSlice = punkSlice[:i]
+
+						} else {
+							punkSlice[i-1] += string(punks[j])
+							punkSlice[i] = punkSlice[i][1:]
+						}
+						i--
+					}
+				}
+			}
+		}*/
+
 		result = SliceToString(punkSlice)
 		myslice := strings.Split(string(result), " ")
 
 		handlePunctuationMark(myslice)
 		finalResult += SliceToString(myslice)
-		handleFlags("(cap)")
 
 		///if there is a \n
 		if j < len(rows)-1 {
@@ -99,19 +117,19 @@ func Reloaded() {
 		}
 	}
 
-	fmt.Println(finalResult)
+	fmt.Println("\n\n")
+	fmt.Println("new : ", finalResult)
 	data := []byte(finalResult)
 
-	//create file if not exist and save it
-	err = os.WriteFile(myArgs[1], data, 0644)
+	// create file if not exist and save it
+	err = os.WriteFile(myArgs[1], data, 0o644)
 	if err != nil {
 		panic(err)
 	}
 }
 
-func generalCapUpLow(slices []string) []string {
+func generalFlags(slices []string) []string {
 	for i := 0; i < len(slices); i++ {
-
 		switch slices[i] {
 		case "(cap)":
 			handleLowCapUp("low", slices, i, false)
@@ -119,7 +137,7 @@ func generalCapUpLow(slices []string) []string {
 			i--
 		case "(cap,":
 			nbrOfWords, _ := strconv.Atoi(string(slices[i+1][:len(slices[i+1])-1]))
-			//lower all then capitalize
+			// lower all then capitalize
 			handlePreviousLowCapUp("(low,", slices, i, nbrOfWords, false)
 			slices = handlePreviousLowCapUp("(cap,", slices, i, nbrOfWords, true)
 			i -= 2
@@ -135,7 +153,7 @@ func generalCapUpLow(slices []string) []string {
 			nbrOfWords, _ := strconv.Atoi(string(slices[i+1][:len(slices[i+1])-1]))
 
 			slices = handlePreviousLowCapUp("(up,", slices, i, nbrOfWords, true)
-			//slices = append(slices, charsAfter)
+			// slices = append(slices, charsAfter)
 			i -= 2
 
 		case "(low)":
@@ -147,48 +165,23 @@ func generalCapUpLow(slices []string) []string {
 			i -= 2
 
 		case "(hex)":
-			if toDecimal(slices[i-1], 16) == 0 {
-				slices[i] = ""
-			} else {
-				slices[i-1] = fmt.Sprint(toDecimal(slices[i-1], 16))
-				slices[i] = ""
-			}
-		case "(bin)":
-			if toDecimal(slices[i-1], 2) == 0 {
+			slices = handleBinHex(16, slices, i)
+			i--
 
-				slices[i] = ""
-			} else {
-				slices[i-1] = fmt.Sprint(toDecimal(slices[i-1], 2))
-				slices[i] = ""
-			}
+		case "(bin)":
+			slices = handleBinHex(2, slices, i)
+			i--
 		}
 	}
 	return slices
 }
 
-//get all flags
-func handleFlags(slice string) {
-	regRule := regexp.MustCompile(`\(cap*,?\s?\d*\)|\(up,?\s?\d?\)`)
-
-	///find all instances
-	// for i := 0; i < len(slice); i++ {
-
-	flags := regRule.ReplaceAllString(slice, ".....")
-
-	fmt.Println("flags : ", flags)
-	// }
-	// flags := regRule.FindAllString(sentence, -1)
-	// flagsIndex := regRule.FindAllStringIndex(sentence, -1)
-	/*
-	   take all flags ---> put them in a slice
-	   split the string by space
-	   check every slice[i] if it equal the flag
-	*/
-	fmt.Println("reg : ")
-	// fmt.Println("reg : ", 1, flags[1])
-	// fmt.Println("reg : ", flagsIndex)
-
-	///regRule.ReplaceAllString(oldString, " ")
+func handleBinHex(base int, mySlice []string, i int) []string {
+	if i-1 >= 0 {
+		mySlice[i-1] = fmt.Sprint(toDecimal(mySlice[i-1], base))
+	}
+	mySlice = append(mySlice[:i], mySlice[i+1:]...)
+	return mySlice
 }
 
 func toDecimal(value string, base int) int64 {
@@ -197,22 +190,18 @@ func toDecimal(value string, base int) int64 {
 	// use the parseInt() function to convert
 	decimal_num, err := strconv.ParseInt(hexadecimal_num, base, 64)
 	// in case of any error
-
 	if err != nil {
-		fmt.Println("- - - - \nError!!\nThe", value, "doesn't match the provided base (", base, ").\n- - - - ")
+		fmt.Println("- - - - \nError!!\nThe '", value, "' doesn't match the provided base (", base, ").\n- - - - ")
 		return 0
-		//	os.Exit(1)
 	}
 	return decimal_num
 }
 
 func handleLowCapUp(ToApply string, mySlice []string, i int, shrinkSlice bool) []string {
-
 	if i-1 >= 0 {
-
 		if ToApply == "cap" {
 			mySlice[i-1] = strings.Title(mySlice[i-1])
-			//don't , aren't
+			// don't , aren't
 			if strings.Contains(mySlice[i-1], "'") {
 				wordSlice := strings.Split(mySlice[i-1], "'")
 				wordSlice[1] = strings.ToLower(wordSlice[1])
@@ -233,26 +222,26 @@ func handleLowCapUp(ToApply string, mySlice []string, i int, shrinkSlice bool) [
 
 func handlePreviousLowCapUp(ToApply string, mySlice []string, i int, nbrOfWords int, shrinkSlice bool) []string {
 	// apply the rule
-	fmt.Println("rrrrrrrrrrr")
-	if i == 0 { 
-	}
+
 	if i-1 >= 0 {
+		if nbrOfWords < 0 {
+			fmt.Println("- - - - \nError!!\nYou entered a negative number (", nbrOfWords, ").\n- - - - ")
+		} else {
+			for j := 0; j < nbrOfWords; j++ {
+				if i-1-j >= 0 {
+					if ToApply == "(cap," {
+						if strings.Contains(mySlice[i-1], "'") {
+							wordSlice := strings.Split(mySlice[i-1], "'")
+							wordSlice[1] = strings.ToLower(wordSlice[1])
+							mySlice[i-1] = wordSlice[0] + "'" + wordSlice[1]
+						}
+						mySlice[i-1-j] = strings.Title(mySlice[i-1-j])
 
-		for j := 0; j < nbrOfWords; j++ {
-			if i-1-j >= 0 {
-				if ToApply == "(cap," {
-					if strings.Contains(mySlice[i-1], "'") {
-						wordSlice := strings.Split(mySlice[i-1], "'")
-						wordSlice[1] = strings.ToLower(wordSlice[1])
-						mySlice[i-1] = wordSlice[0] + "'" + wordSlice[1]
+					} else if ToApply == "(up," {
+						mySlice[i-1-j] = strings.ToUpper(mySlice[i-1-j])
+					} else if ToApply == "(low," {
+						mySlice[i-1-j] = strings.ToLower(mySlice[i-1-j])
 					}
-					mySlice[i-1-j] = strings.Title(mySlice[i-1-j])
-
-				} else if ToApply == "(up," {
-					mySlice[i-1-j] = strings.ToUpper(mySlice[i-1-j])
-
-				} else if ToApply == "(low," {
-					mySlice[i-1-j] = strings.ToLower(mySlice[i-1-j])
 				}
 			}
 		}
@@ -266,7 +255,19 @@ func handlePreviousLowCapUp(ToApply string, mySlice []string, i int, nbrOfWords 
 
 func handlePunctuationMark(value []string) []string {
 	first := 0
+
+	// check for a ' if it's in the beginning of a word
+	// check if there is a second one
+	//YES - if there is one add it it to the word bfore it
+	///NO - add space between the ' and the word
+
+	// mm := SliceToString(value)
+	// fmt.Println(strings.Split(mm, "'")[1])
 	for i := 0; i < len(value); i++ {
+		if strings.HasPrefix(value[i], "'") && len(value[i]) > 1 {
+			value[i] = "' " + value[i][1:]
+		}
+		//	fmt.Println(strings.Contains(strings.Join(value[2:], " "), "'"))
 
 		if value[i] == "'" && first == 0 {
 			value[i+1] = "'" + value[i+1]
@@ -281,17 +282,24 @@ func handlePunctuationMark(value []string) []string {
 		}
 	}
 	return value
+}
 
+func addSpaceToSingleQuote(word string) string {
+	if strings.HasPrefix(word, "'") {
+		word = "' " + word[1:]
+	}
+	if strings.HasSuffix(word, "'") {
+		word = word[:len(word)-1] + " '"
+	}
+	return word
 }
 
 func checkVowels(mySlice []string) {
 	vowels := "aeoiuhAEOIUH"
 	for i := 0; i < len(mySlice); i++ {
 		for j := 0; j < len(vowels); j++ {
-
 			if string(mySlice[i]) != "" && i > 0 && mySlice[i][0] == vowels[j] {
 				if string(mySlice[i-1]) == "A" || string(mySlice[i-1]) == "a" {
-
 					mySlice[i-1] += "n"
 				}
 			}
@@ -299,7 +307,7 @@ func checkVowels(mySlice []string) {
 	}
 }
 
-///convert slice to string
+// /convert slice to string
 func SliceToString(mySlice []string) string {
 	myString := ""
 	for i := 0; i < len(mySlice); i++ {
@@ -310,7 +318,7 @@ func SliceToString(mySlice []string) string {
 		if i == len(mySlice)-1 {
 			break
 		}
-		//if i != len -1 && mySlice[i] != ""
+		// if i != len -1 && mySlice[i] != ""
 		if mySlice[i] != "" && mySlice[i] != " " {
 			myString += " "
 		}
