@@ -65,23 +65,9 @@ func Reloaded() {
 		punkSlice := strings.Split(slicesStr, " ")
 
 		punks := ".,!?:;"
-		// newStr :=""
-		for i := 0; i < len(slicesStr); i++ {
-			for j := 0; j < len(punks); j++ {
-				if slicesStr[i] == punks[j] {
-					if i > 0 && string(slicesStr[i-1]) == " " {
-						//	slicesStr[i-1] = slicesStr[i] + " "
-						// ss := slicesStr[i-1]
-						// strings.Replace(slicesStr, ss, slicesStr, 1)
-						// newStr =
-					}
-				}
-			}
-		}
 
-		/*	for i := 0; i < len(punkSlice); i++ {
+		for i := 0; i < len(punkSlice); i++ {
 			for j := 0; j < len(punks); j++ {
-				fmt.Println(punkSlice[i])
 				if strings.Index(punkSlice[i], string(punks[j])) == 0 {
 					if i-1 >= 0 {
 
@@ -89,7 +75,6 @@ func Reloaded() {
 							// if there is a char only
 							punkSlice[i-1] += string(punks[j])
 							punkSlice = append(punkSlice[:i], punkSlice[i+1:]...)
-
 						} else if i == len(punkSlice)-1 && len(punkSlice[i]) == 1 {
 							fmt.Println("again")
 							punkSlice[i-1] += punkSlice[i]
@@ -103,13 +88,40 @@ func Reloaded() {
 					}
 				}
 			}
-		}*/
+		}
+		aa := SliceToString(punkSlice)
 
+		handlePunctuationMark(aa)
 		result = SliceToString(punkSlice)
-		myslice := strings.Split(string(result), " ")
+		// myslice := strings.Split(string(result), " ")
+		LLL := ""
+		found := false
+		a := 0
+		////handle concatenated punks
+		for i := 0; i < len(result); i++ {
+			for j := 0; j < len(punks); j++ {
+				if result[i] == punks[j] {
+					//////handle out of range
+					if i < len(result)-1 {
+						if string(result[i+1]) != " " && checkForPunk(string(result[i+1])) {
+							LLL += string(result[i]) + " "
+							found = true
+							a = 1
+						}
+					}
+				}
+			}
+			if a > 0 {
+				a = 0
+				found = false
+				continue
+			}
+			if !found {
+				LLL += string(result[i])
+			}
+		}
 
-		handlePunctuationMark(myslice)
-		finalResult += SliceToString(myslice)
+		finalResult += LLL
 
 		///if there is a \n
 		if j < len(rows)-1 {
@@ -117,7 +129,7 @@ func Reloaded() {
 		}
 	}
 
-	fmt.Println("\n\n")
+	fmt.Println("\n")
 	fmt.Println("new : ", finalResult)
 	data := []byte(finalResult)
 
@@ -126,6 +138,18 @@ func Reloaded() {
 	if err != nil {
 		panic(err)
 	}
+}
+
+func checkForPunk(m string) bool {
+	punks := ".,!?:;"
+	nextNotPunk := true
+
+	for j := 0; j < len(punks); j++ {
+		if m == string(punks[j]) {
+			nextNotPunk = false
+		}
+	}
+	return nextNotPunk
 }
 
 func generalFlags(slices []string) []string {
@@ -140,7 +164,7 @@ func generalFlags(slices []string) []string {
 			// lower all then capitalize
 			handlePreviousLowCapUp("(low,", slices, i, nbrOfWords, false)
 			slices = handlePreviousLowCapUp("(cap,", slices, i, nbrOfWords, true)
-			i -= 2
+			i -= 1
 
 		case "(up)":
 			slices = handleLowCapUp("up", slices, i, true)
@@ -154,7 +178,7 @@ func generalFlags(slices []string) []string {
 
 			slices = handlePreviousLowCapUp("(up,", slices, i, nbrOfWords, true)
 			// slices = append(slices, charsAfter)
-			i -= 2
+			i -= 1
 
 		case "(low)":
 			slices = handleLowCapUp("low", slices, i, true)
@@ -162,7 +186,7 @@ func generalFlags(slices []string) []string {
 		case "(low,":
 			nbrOfWords, _ := strconv.Atoi(string(slices[i+1][:len(slices[i+1])-1]))
 			slices = handlePreviousLowCapUp("(low,", slices, i, nbrOfWords, true)
-			i -= 2
+			i -= 1
 
 		case "(hex)":
 			slices = handleBinHex(16, slices, i)
@@ -253,34 +277,59 @@ func handlePreviousLowCapUp(ToApply string, mySlice []string, i int, nbrOfWords 
 	return mySlice
 }
 
-func handlePunctuationMark(value []string) []string {
-	first := 0
+func handlePunctuationMark(value string) string {
+	// first := 0
+	fmt.Println(value)
+	sliceValue := strings.Split(value, "")
+	fmt.Println(sliceValue)
 
-	// check for a ' if it's in the beginning of a word
-	// check if there is a second one
-	//YES - if there is one add it it to the word bfore it
-	///NO - add space between the ' and the word
+	////// check for a ' if it's in the beginning of a word
+	////////// YES :  check if there is a second one
+	/////////////// YES : add it to the end of the word before it
+	/////////////// NO : add space on each side of it if it's not can't don't i-1 !=n and i+1 != t
+	////////// NO : add space on each side of it if it's not can't don't i-1 !=n and i+1 != t
 
 	// mm := SliceToString(value)
 	// fmt.Println(strings.Split(mm, "'")[1])
-	for i := 0; i < len(value); i++ {
-		if strings.HasPrefix(value[i], "'") && len(value[i]) > 1 {
-			value[i] = "' " + value[i][1:]
-		}
-		//	fmt.Println(strings.Contains(strings.Join(value[2:], " "), "'"))
 
-		if value[i] == "'" && first == 0 {
-			value[i+1] = "'" + value[i+1]
-			value[i] = ""
-			first = 1
-			continue
-		}
-		if value[i] == "'" && first == 1 {
-			value[i-1] += "'"
-			value[i] = ""
-			first = 0
+	var punks []int
+	for i := 0; i < len(sliceValue); i++ {
+		char := string(sliceValue[i])
+
+		if char == "'" {
+			punks = append(punks, i)
 		}
 	}
+
+ 
+	for i := 0; i < len(sliceValue)-1; i++ {
+		if len(punks)%2 == 0 {
+			if string(sliceValue[i+1]) == " " {
+				sliceValue[i+1] = ""
+			}
+		}
+	}
+	
+	fmt.Println(SliceToString(sliceValue))
+
+	// if strings.HasPrefix(value[i], "'") && len(value[i]) > 1 {
+	// 	value[i] = "' " + value[i][1:]
+	// }
+	//	fmt.Println(strings.Contains(strings.Join(value[2:], " "), "'"))
+
+	// if value[i] == "'" && first == 0 {
+	// 	value[i+1] = "'" + value[i+1]
+	// 	value[i] = ""
+	// 	first = 1
+	// 	continue
+	// }
+	// if value[i] == "'" && first == 1 {
+	// 	value[i-1] += "'"
+	// 	value[i] = ""
+	// 	first = 0
+	// }
+
+	fmt.Println(punks)
 	return value
 }
 
@@ -296,11 +345,20 @@ func addSpaceToSingleQuote(word string) string {
 
 func checkVowels(mySlice []string) {
 	vowels := "aeoiuhAEOIUH"
+
 	for i := 0; i < len(mySlice); i++ {
 		for j := 0; j < len(vowels); j++ {
-			if string(mySlice[i]) != "" && i > 0 && mySlice[i][0] == vowels[j] {
+			// check if the first char is a vowel
+			if i > 0 && mySlice[i][0] == vowels[j] {
 				if string(mySlice[i-1]) == "A" || string(mySlice[i-1]) == "a" {
 					mySlice[i-1] += "n"
+				}
+				if len(mySlice[i-1]) == 2 {
+					if string(mySlice[i-1][1]) == "a" {
+						if string(mySlice[i-1][0]) == "(" || string(mySlice[i-1][0]) == "\"" || string(mySlice[i-1][0]) == "'" {
+							mySlice[i-1] += "n"
+						}
+					}
 				}
 			}
 		}
