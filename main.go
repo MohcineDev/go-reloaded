@@ -3,19 +3,15 @@ package main
 import (
 	"fmt"
 	"os"
+	"path"
 	"regexp"
 	"strconv"
 	"strings"
+	"unicode"
 )
 
 func main() {
 	Reloaded()
-}
-
-func check(e error) {
-	if e != nil {
-		return
-	}
 }
 
 // purge the input
@@ -26,19 +22,25 @@ func removeSpaces(oldString string) string {
 
 func Reloaded() {
 	myArgs := os.Args[1:]
-
-	dat, err := os.ReadFile(myArgs[0])
-
-	///if no result file is provided
 	if len(myArgs) < 2 {
-		fmt.Println("please enter result file!!!")
+		fmt.Println("Error!! please enter sample.txt and result file!!!")
 		return
 	}
-	if len(myArgs) > 2 {
-		fmt.Println("you entered more than 2 args!!!")
-	}
+	dat, err := os.ReadFile(myArgs[0])
+	if err != nil {
+		fmt.Println("Error!!", myArgs[0], "file not found !!!")
+		return
 
-	check(err)
+	}
+	///if no result file is provided
+
+	if len(myArgs) > 2 {
+		fmt.Println("Error!! you entered more than 2 args!!!")
+	}
+	if path.Ext(myArgs[1]) != ".txt" {
+		fmt.Println("Error!! result file Extension must be (.txt) !!!")
+		return
+	}
 
 	///split the rows by \n
 	rows := strings.Split(string(dat), "\n")
@@ -52,10 +54,7 @@ func Reloaded() {
 		newString := removeSpaces(rows[j])
 
 		///splitting each row by " "
-
-		slices := strings.Split(newString, " ")
-
-		result := ""
+		slices := strings.Fields(newString)
 
 		checkVowels(slices)
 
@@ -68,6 +67,7 @@ func Reloaded() {
 
 		for i := 0; i < len(punkSlice); i++ {
 			for j := 0; j < len(punks); j++ {
+				////check if punkSlice[i] start with punk index = 0
 				if strings.Index(punkSlice[i], string(punks[j])) == 0 {
 					if i-1 >= 0 {
 
@@ -75,36 +75,31 @@ func Reloaded() {
 							// if there is a char only
 							punkSlice[i-1] += string(punks[j])
 							punkSlice = append(punkSlice[:i], punkSlice[i+1:]...)
-						} else if i == len(punkSlice)-1 && len(punkSlice[i]) == 1 {
-							fmt.Println("again")
-							punkSlice[i-1] += punkSlice[i]
-							punkSlice = punkSlice[:i]
-
 						} else {
 							punkSlice[i-1] += string(punks[j])
 							punkSlice[i] = punkSlice[i][1:]
 						}
+
 						i--
 					}
 				}
 			}
 		}
-		aa := SliceToString(punkSlice)
 
-		handlePunctuationMark(aa)
-		result = SliceToString(punkSlice)
-		// myslice := strings.Split(string(result), " ")
-		LLL := ""
+		afterSingle := handleSingleQuote(SliceToString(punkSlice))
+
+		result := ""
 		found := false
 		a := 0
+
 		////handle concatenated punks
-		for i := 0; i < len(result); i++ {
+		for i := 0; i < len(afterSingle); i++ {
 			for j := 0; j < len(punks); j++ {
-				if result[i] == punks[j] {
-					//////handle out of range
-					if i < len(result)-1 {
-						if string(result[i+1]) != " " && checkForPunk(string(result[i+1])) {
-							LLL += string(result[i]) + " "
+				if afterSingle[i] == punks[j] {
+					//////handle out of range i+1
+					if i < len(afterSingle)-1 {
+						if string(afterSingle[i+1]) != " " && checkForPunk(string(afterSingle[i+1])) {
+							result += string(afterSingle[i]) + " "
 							found = true
 							a = 1
 						}
@@ -117,11 +112,11 @@ func Reloaded() {
 				continue
 			}
 			if !found {
-				LLL += string(result[i])
+				result += string(afterSingle[i])
 			}
 		}
 
-		finalResult += LLL
+		finalResult += result
 
 		///if there is a \n
 		if j < len(rows)-1 {
@@ -130,7 +125,7 @@ func Reloaded() {
 	}
 
 	fmt.Println("\n")
-	fmt.Println("new : ", finalResult)
+	fmt.Println("new :", finalResult)
 	data := []byte(finalResult)
 
 	// create file if not exist and save it
@@ -140,12 +135,12 @@ func Reloaded() {
 	}
 }
 
-func checkForPunk(m string) bool {
+func checkForPunk(char string) bool {
 	punks := ".,!?:;"
 	nextNotPunk := true
 
 	for j := 0; j < len(punks); j++ {
-		if m == string(punks[j]) {
+		if char == string(punks[j]) {
 			nextNotPunk = false
 		}
 	}
@@ -154,47 +149,50 @@ func checkForPunk(m string) bool {
 
 func generalFlags(slices []string) []string {
 	for i := 0; i < len(slices); i++ {
-		switch slices[i] {
-		case "(cap)":
-			handleLowCapUp("low", slices, i, false)
-			slices = handleLowCapUp("cap", slices, i, true)
-			i--
-		case "(cap,":
-			nbrOfWords, _ := strconv.Atoi(string(slices[i+1][:len(slices[i+1])-1]))
-			// lower all then capitalize
-			handlePreviousLowCapUp("(low,", slices, i, nbrOfWords, false)
-			slices = handlePreviousLowCapUp("(cap,", slices, i, nbrOfWords, true)
-			i -= 1
+		if i+1 < len(slices)-1 {
+			switch slices[i] {
+			case "(cap)":
+				handleLowCapUp("low", slices, i, false)
+				slices = handleLowCapUp("cap", slices, i, true)
+				i--
+			case "(cap,":
 
-		case "(up)":
-			slices = handleLowCapUp("up", slices, i, true)
-			i--
-		case "(up,":
-			// num := strings.Index(slices[i+1], ")")
-			// numOfWords := slices[i+1][0:num]
-			// charsAfter := slices[i+1][num+1:]
-			// nbrOfWords, _ := strconv.Atoi(string(numOfWords))
-			nbrOfWords, _ := strconv.Atoi(string(slices[i+1][:len(slices[i+1])-1]))
+				nbrOfWords, _ := strconv.Atoi(string(slices[i+1][:len(slices[i+1])-1]))
+				// lower all then capitalize
+				handlePreviousLowCapUp("(low,", slices, i, nbrOfWords, false)
+				slices = handlePreviousLowCapUp("(cap,", slices, i, nbrOfWords, true)
+				i -= 1
 
-			slices = handlePreviousLowCapUp("(up,", slices, i, nbrOfWords, true)
-			// slices = append(slices, charsAfter)
-			i -= 1
+			case "(up)":
+				slices = handleLowCapUp("up", slices, i, true)
+				i--
+			case "(up,":
+				// num := strings.Index(slices[i+1], ")")
+				// numOfWords := slices[i+1][0:num]
+				// charsAfter := slices[i+1][num+1:]
+				// nbrOfWords, _ := strconv.Atoi(string(numOfWords))
+				nbrOfWords, _ := strconv.Atoi(string(slices[i+1][:len(slices[i+1])-1]))
 
-		case "(low)":
-			slices = handleLowCapUp("low", slices, i, true)
-			i--
-		case "(low,":
-			nbrOfWords, _ := strconv.Atoi(string(slices[i+1][:len(slices[i+1])-1]))
-			slices = handlePreviousLowCapUp("(low,", slices, i, nbrOfWords, true)
-			i -= 1
+				slices = handlePreviousLowCapUp("(up,", slices, i, nbrOfWords, true)
+				// slices = append(slices, charsAfter)
+				i -= 1
 
-		case "(hex)":
-			slices = handleBinHex(16, slices, i)
-			i--
+			case "(low)":
+				slices = handleLowCapUp("low", slices, i, true)
+				i--
+			case "(low,":
+				nbrOfWords, _ := strconv.Atoi(string(slices[i+1][:len(slices[i+1])-1]))
+				slices = handlePreviousLowCapUp("(low,", slices, i, nbrOfWords, true)
+				i -= 1
 
-		case "(bin)":
-			slices = handleBinHex(2, slices, i)
-			i--
+			case "(hex)":
+				slices = handleBinHex(16, slices, i)
+				i--
+
+			case "(bin)":
+				slices = handleBinHex(2, slices, i)
+				i--
+			}
 		}
 	}
 	return slices
@@ -260,7 +258,6 @@ func handlePreviousLowCapUp(ToApply string, mySlice []string, i int, nbrOfWords 
 							mySlice[i-1] = wordSlice[0] + "'" + wordSlice[1]
 						}
 						mySlice[i-1-j] = strings.Title(mySlice[i-1-j])
-
 					} else if ToApply == "(up," {
 						mySlice[i-1-j] = strings.ToUpper(mySlice[i-1-j])
 					} else if ToApply == "(low," {
@@ -277,70 +274,62 @@ func handlePreviousLowCapUp(ToApply string, mySlice []string, i int, nbrOfWords 
 	return mySlice
 }
 
-func handlePunctuationMark(value string) string {
-	// first := 0
-	fmt.Println(value)
-	sliceValue := strings.Split(value, "")
-	fmt.Println(sliceValue)
+// /string to rune
+func stringToRune(s string) string {
+	myRune := []rune(s)
+	new := []rune{}
+
+	for i, v := range myRune {
+		///check if v is a single quote
+		if v == '\'' && i-1 >= 0 && i+1 < len(myRune) && unicode.IsLetter(myRune[i-1]) && unicode.IsLetter(myRune[i+1]) {
+			new = append(new, v)
+		} else if v == '\'' {
+			new = append(new, ' ')
+			new = append(new, v)
+			new = append(new, ' ')
+		} else {
+			new = append(new, v)
+		}
+	}
+	return string(new)
+}
+
+func handleSingleQuote(value string) string {
+	myStr := stringToRune(value)
+	mySlice := strings.Fields(myStr)
 
 	////// check for a ' if it's in the beginning of a word
 	////////// YES :  check if there is a second one
+	////////////////// YES : check if it's at the end of a word
+	//////////////////////// YES : leave it
+	/////////////////////// NO : add it to the end
+	/////////////////  NO :
 	/////////////// YES : add it to the end of the word before it
 	/////////////// NO : add space on each side of it if it's not can't don't i-1 !=n and i+1 != t
 	////////// NO : add space on each side of it if it's not can't don't i-1 !=n and i+1 != t
 
-	// mm := SliceToString(value)
-	// fmt.Println(strings.Split(mm, "'")[1])
+	openQuote := false
+	openIndex := -1
+	closeQuote := false
 
-	var punks []int
-	for i := 0; i < len(sliceValue); i++ {
-		char := string(sliceValue[i])
+	for i := 0; i < len(mySlice); i++ {
+		if i < len(mySlice)-1 && mySlice[i] == "'" && !openQuote && mySlice[i+1] != "'" {
+			openQuote = true
+			openIndex = i
+		} else if mySlice[i] == "'" && openQuote && !closeQuote {
+			closeQuote = true
+			mySlice[openIndex+1] = mySlice[openIndex] + mySlice[openIndex+1]
+			mySlice[i-1] += mySlice[i]
+			mySlice[openIndex] = ""
+			mySlice[i] = ""
+			fmt.Println("len++ : ", len(mySlice))
 
-		if char == "'" {
-			punks = append(punks, i)
+			openQuote = false
+			closeQuote = false
 		}
 	}
 
- 
-	for i := 0; i < len(sliceValue)-1; i++ {
-		if len(punks)%2 == 0 {
-			if string(sliceValue[i+1]) == " " {
-				sliceValue[i+1] = ""
-			}
-		}
-	}
-	
-	fmt.Println(SliceToString(sliceValue))
-
-	// if strings.HasPrefix(value[i], "'") && len(value[i]) > 1 {
-	// 	value[i] = "' " + value[i][1:]
-	// }
-	//	fmt.Println(strings.Contains(strings.Join(value[2:], " "), "'"))
-
-	// if value[i] == "'" && first == 0 {
-	// 	value[i+1] = "'" + value[i+1]
-	// 	value[i] = ""
-	// 	first = 1
-	// 	continue
-	// }
-	// if value[i] == "'" && first == 1 {
-	// 	value[i-1] += "'"
-	// 	value[i] = ""
-	// 	first = 0
-	// }
-
-	fmt.Println(punks)
-	return value
-}
-
-func addSpaceToSingleQuote(word string) string {
-	if strings.HasPrefix(word, "'") {
-		word = "' " + word[1:]
-	}
-	if strings.HasSuffix(word, "'") {
-		word = word[:len(word)-1] + " '"
-	}
-	return word
+	return SliceToString(mySlice)
 }
 
 func checkVowels(mySlice []string) {
@@ -367,19 +356,5 @@ func checkVowels(mySlice []string) {
 
 // /convert slice to string
 func SliceToString(mySlice []string) string {
-	myString := ""
-	for i := 0; i < len(mySlice); i++ {
-
-		if mySlice[i] != "" {
-			myString += mySlice[i]
-		}
-		if i == len(mySlice)-1 {
-			break
-		}
-		// if i != len -1 && mySlice[i] != ""
-		if mySlice[i] != "" && mySlice[i] != " " {
-			myString += " "
-		}
-	}
-	return myString
+	return strings.Trim(strings.Join(mySlice, " "), " ")
 }
