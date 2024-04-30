@@ -1,1 +1,9 @@
 jh (cap, 1) ' jjj '
+
+Hello (up, 10)
+
+(cap)
+
+(low, )
+
+my  . . ; . name ,is ::kamal ;

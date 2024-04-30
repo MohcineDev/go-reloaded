@@ -57,27 +57,24 @@ func Reloaded() {
 		slices := strings.Fields(newString)
 
 		checkVowels(slices)
-
 		slices = generalFlags(slices)
-		///punctuations
-		slicesStr := SliceToString(slices)
-		punkSlice := strings.Split(slicesStr, " ")
+		checkVowels(slices)
 
 		punks := ".,!?:;"
 
-		for i := 0; i < len(punkSlice); i++ {
+		for i := 0; i < len(slices); i++ {
 			for j := 0; j < len(punks); j++ {
-				////check if punkSlice[i] start with punk index = 0
-				if strings.Index(punkSlice[i], string(punks[j])) == 0 {
+				////check if slices[i] start with punk index = 0
+				if strings.Index(slices[i], string(punks[j])) == 0 {
 					if i-1 >= 0 {
 
-						if len(punkSlice[i]) == 1 {
+						if len(slices[i]) == 1 {
 							// if there is a char only
-							punkSlice[i-1] += string(punks[j])
-							punkSlice = append(punkSlice[:i], punkSlice[i+1:]...)
+							slices[i-1] += string(punks[j])
+							slices = append(slices[:i], slices[i+1:]...)
 						} else {
-							punkSlice[i-1] += string(punks[j])
-							punkSlice[i] = punkSlice[i][1:]
+							slices[i-1] += string(punks[j])
+							slices[i] = slices[i][1:]
 						}
 
 						i--
@@ -86,20 +83,20 @@ func Reloaded() {
 			}
 		}
 
-		afterSingle := handleSingleQuote(SliceToString(punkSlice))
+		punkString := SliceToString(slices)
 
 		result := ""
 		found := false
 		a := 0
 
 		////handle concatenated punks
-		for i := 0; i < len(afterSingle); i++ {
+		for i := 0; i < len(punkString); i++ {
 			for j := 0; j < len(punks); j++ {
-				if afterSingle[i] == punks[j] {
+				if punkString[i] == punks[j] {
 					//////handle out of range i+1
-					if i < len(afterSingle)-1 {
-						if string(afterSingle[i+1]) != " " && checkForPunk(string(afterSingle[i+1])) {
-							result += string(afterSingle[i]) + " "
+					if i < len(punkString)-1 {
+						if string(punkString[i+1]) != " " && checkForPunk(string(punkString[i+1])) {
+							result += string(punkString[i]) + " "
 							found = true
 							a = 1
 						}
@@ -112,11 +109,11 @@ func Reloaded() {
 				continue
 			}
 			if !found {
-				result += string(afterSingle[i])
+				result += string(punkString[i])
 			}
 		}
 
-		finalResult += result
+		finalResult += handleSingleQuote(result)
 
 		///if there is a \n
 		if j < len(rows)-1 {
@@ -124,8 +121,6 @@ func Reloaded() {
 		}
 	}
 
-	fmt.Println("\n")
-	fmt.Println("new :", finalResult)
 	data := []byte(finalResult)
 
 	// create file if not exist and save it
@@ -149,41 +144,48 @@ func checkForPunk(char string) bool {
 
 func generalFlags(slices []string) []string {
 	for i := 0; i < len(slices); i++ {
-		if i+1 < len(slices)-1 {
+		if i < len(slices) {
 			switch slices[i] {
 			case "(cap)":
 				handleLowCapUp("low", slices, i, false)
 				slices = handleLowCapUp("cap", slices, i, true)
 				i--
 			case "(cap,":
+				if i+1 < len(slices) && isRightFlag(slices[i+1]) {
 
-				nbrOfWords, _ := strconv.Atoi(string(slices[i+1][:len(slices[i+1])-1]))
-				// lower all then capitalize
-				handlePreviousLowCapUp("(low,", slices, i, nbrOfWords, false)
-				slices = handlePreviousLowCapUp("(cap,", slices, i, nbrOfWords, true)
-				i -= 1
+					nbrOfWords, _ := strconv.Atoi(string(slices[i+1][:len(slices[i+1])-1]))
+					// lower all then capitalize
+					handlePreviousLowCapUp("(low,", slices, i, nbrOfWords)
+					slices = handlePreviousLowCapUp("(cap,", slices, i, nbrOfWords)
 
+					slices = append(slices[:i], slices[i+2:]...)
+					i -= 1
+
+				}
 			case "(up)":
 				slices = handleLowCapUp("up", slices, i, true)
 				i--
 			case "(up,":
-				// num := strings.Index(slices[i+1], ")")
-				// numOfWords := slices[i+1][0:num]
-				// charsAfter := slices[i+1][num+1:]
-				// nbrOfWords, _ := strconv.Atoi(string(numOfWords))
-				nbrOfWords, _ := strconv.Atoi(string(slices[i+1][:len(slices[i+1])-1]))
+				if i+1 < len(slices) && isRightFlag(slices[i+1]) {
+					nbrOfWords, _ := strconv.Atoi(string(slices[i+1][:len(slices[i+1])-1]))
 
-				slices = handlePreviousLowCapUp("(up,", slices, i, nbrOfWords, true)
-				// slices = append(slices, charsAfter)
-				i -= 1
+					slices = handlePreviousLowCapUp("(up,", slices, i, nbrOfWords)
+					slices = append(slices[:i], slices[i+2:]...)
+					i -= 1
 
+				}
 			case "(low)":
+				///fmt.Println(slices)
 				slices = handleLowCapUp("low", slices, i, true)
 				i--
 			case "(low,":
-				nbrOfWords, _ := strconv.Atoi(string(slices[i+1][:len(slices[i+1])-1]))
-				slices = handlePreviousLowCapUp("(low,", slices, i, nbrOfWords, true)
-				i -= 1
+				if i+1 < len(slices) && isRightFlag(slices[i+1]) {
+					nbrOfWords, _ := strconv.Atoi(string(slices[i+1][:len(slices[i+1])-1]))
+					slices = handlePreviousLowCapUp("(low,", slices, i, nbrOfWords)
+
+					slices = append(slices[:i], slices[i+2:]...)
+					i -= 1
+				}
 
 			case "(hex)":
 				slices = handleBinHex(16, slices, i)
@@ -198,6 +200,17 @@ func generalFlags(slices []string) []string {
 	return slices
 }
 
+func isRightFlag(halfFlag string) bool {
+	if string(halfFlag[len(halfFlag)-1]) == ")" {
+		_, err := strconv.Atoi(string(halfFlag[:len(halfFlag)-1]))
+		if err == nil {
+			return true
+		}
+	}
+
+	return false
+}
+
 func handleBinHex(base int, mySlice []string, i int) []string {
 	if i-1 >= 0 {
 		mySlice[i-1] = fmt.Sprint(toDecimal(mySlice[i-1], base))
@@ -206,17 +219,16 @@ func handleBinHex(base int, mySlice []string, i int) []string {
 	return mySlice
 }
 
-func toDecimal(value string, base int) int64 {
-	hexadecimal_num := value
-
+func toDecimal(value string, base int) string {
 	// use the parseInt() function to convert
-	decimal_num, err := strconv.ParseInt(hexadecimal_num, base, 64)
+	decimal_num, err := strconv.ParseInt(value, base, 64)
 	// in case of any error
 	if err != nil {
 		fmt.Println("- - - - \nError!!\nThe '", value, "' doesn't match the provided base (", base, ").\n- - - - ")
-		return 0
+		return value
 	}
-	return decimal_num
+	// fmt.Println("0000 : ", decimal_num)
+	return strconv.Itoa(int(decimal_num))
 }
 
 func handleLowCapUp(ToApply string, mySlice []string, i int, shrinkSlice bool) []string {
@@ -242,7 +254,7 @@ func handleLowCapUp(ToApply string, mySlice []string, i int, shrinkSlice bool) [
 	return mySlice
 }
 
-func handlePreviousLowCapUp(ToApply string, mySlice []string, i int, nbrOfWords int, shrinkSlice bool) []string {
+func handlePreviousLowCapUp(ToApply string, mySlice []string, i int, nbrOfWords int) []string {
 	// apply the rule
 
 	if i-1 >= 0 {
@@ -252,12 +264,13 @@ func handlePreviousLowCapUp(ToApply string, mySlice []string, i int, nbrOfWords 
 			for j := 0; j < nbrOfWords; j++ {
 				if i-1-j >= 0 {
 					if ToApply == "(cap," {
-						if strings.Contains(mySlice[i-1], "'") {
-							wordSlice := strings.Split(mySlice[i-1], "'")
-							wordSlice[1] = strings.ToLower(wordSlice[1])
-							mySlice[i-1] = wordSlice[0] + "'" + wordSlice[1]
-						}
 						mySlice[i-1-j] = strings.Title(mySlice[i-1-j])
+
+						if strings.Contains(mySlice[i-1-j], "'") {
+							wordSlice := strings.Split(mySlice[i-1-j], "'")
+							wordSlice[1] = strings.ToLower(wordSlice[1])
+							mySlice[i-1-j] = wordSlice[0] + "'" + wordSlice[1]
+						}
 					} else if ToApply == "(up," {
 						mySlice[i-1-j] = strings.ToUpper(mySlice[i-1-j])
 					} else if ToApply == "(low," {
@@ -267,10 +280,7 @@ func handlePreviousLowCapUp(ToApply string, mySlice []string, i int, nbrOfWords 
 			}
 		}
 	}
-	if shrinkSlice {
-		// remove the (rule)
-		mySlice = append(mySlice[:i], mySlice[i+2:]...)
-	}
+
 	return mySlice
 }
 
@@ -307,12 +317,13 @@ func handleSingleQuote(value string) string {
 	/////////////// YES : add it to the end of the word before it
 	/////////////// NO : add space on each side of it if it's not can't don't i-1 !=n and i+1 != t
 	////////// NO : add space on each side of it if it's not can't don't i-1 !=n and i+1 != t
-
+	// gf g '  ' fd don't gfsdfg  ' rt
 	openQuote := false
 	openIndex := -1
 	closeQuote := false
 
 	for i := 0; i < len(mySlice); i++ {
+		//
 		if i < len(mySlice)-1 && mySlice[i] == "'" && !openQuote && mySlice[i+1] != "'" {
 			openQuote = true
 			openIndex = i
@@ -322,7 +333,7 @@ func handleSingleQuote(value string) string {
 			mySlice[i-1] += mySlice[i]
 			mySlice[openIndex] = ""
 			mySlice[i] = ""
-			fmt.Println("len++ : ", len(mySlice))
+			// fmt.Println("len++ : ", len(mySlice))
 
 			openQuote = false
 			closeQuote = false
@@ -339,16 +350,19 @@ func checkVowels(mySlice []string) {
 		for j := 0; j < len(vowels); j++ {
 			// check if the first char is a vowel
 			if i > 0 && mySlice[i][0] == vowels[j] {
+				//fmt.Println(mySlice[i-1])
+
 				if string(mySlice[i-1]) == "A" || string(mySlice[i-1]) == "a" {
 					mySlice[i-1] += "n"
 				}
 				if len(mySlice[i-1]) == 2 {
 					if string(mySlice[i-1][1]) == "a" {
-						if string(mySlice[i-1][0]) == "(" || string(mySlice[i-1][0]) == "\"" || string(mySlice[i-1][0]) == "'" {
+						if string(mySlice[i-1][0]) == "(" || string(mySlice[i-1][0]) == "\"" || string(mySlice[i-1][0]) == "'" || string(mySlice[i-1][0]) == "[" || string(mySlice[i-1][0]) == "{" {
 							mySlice[i-1] += "n"
 						}
 					}
 				}
+
 			}
 		}
 	}
@@ -356,5 +370,5 @@ func checkVowels(mySlice []string) {
 
 // /convert slice to string
 func SliceToString(mySlice []string) string {
-	return strings.Trim(strings.Join(mySlice, " "), " ")
+	return removeSpaces(strings.Trim(strings.Join(mySlice, " "), " "))
 }
